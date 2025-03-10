@@ -1,11 +1,20 @@
 import './style.css';
 import * as THREE from 'three';
-import { Rectangle } from './Rectangle.js';
+import { Player } from './Player.js';
 import { Ball } from './Ball.js';
-import { Arrow } from '../Arrow.js';
+import { Camera } from './Camera.js';
+import { SpatialHashing } from './SpatialHashing.js';
+import { Wall } from './Wall.js';
+import { EventSystem } from './EventSystem.js';
+import { ScoreManager } from './scoreManager.js';
+import { EventType } from './eventTypes.js';
+import { SoundManager } from './soundManager.js';
+import { Debug } from './Debug.js';
+import { BrickManager } from './brickManager.js';
+import { LightManager } from './lightManager.js';
 
-const scene = new THREE.Scene();
-const clock = new THREE.Clock();
+const ballSpeed = 24;
+const playerSpeed = 32;
 
 const frustumSize = 20;
 const aspectRatio = window.innerWidth / window.innerHeight;
@@ -16,54 +25,60 @@ const bounds = {
   bottom: -frustumSize / 2,
 };
 
-const camera = new THREE.OrthographicCamera(
-    -frustumSize * aspectRatio / 2,
-    frustumSize * aspectRatio / 2,
-    frustumSize / 2,
-    -frustumSize / 2,
-    0.001,
-    1000,
-);
-camera.position.z = 1;
-
-const listener = new THREE.AudioListener();
-camera.add(listener);
-
 const renderer = new THREE.WebGLRenderer();
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setAnimationLoop(animate);
 document.body.appendChild(renderer.domElement);
 
-// Lights
-const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
-scene.add(ambientLight);
+const scene = new THREE.Scene();
+const clock = new THREE.Clock();
+const eventSystem = new EventSystem();
+const camera = new Camera();
+const lightManager = new LightManager();
+const scoreManager = new ScoreManager(eventSystem);
+const soundManager = new SoundManager(eventSystem);
+const player = new Player(3, 0.5, playerSpeed, bounds);
+const ball = new Ball(player, bounds, ballSpeed, eventSystem);
+const wall = new Wall(bounds);
+const brickManager = new BrickManager(bounds, eventSystem);
+const spatialHashing = new SpatialHashing(ball, bounds, 4, eventSystem);
+const debug = new Debug(bounds, spatialHashing, ball);
 
-// Add directional light from above
-const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
-directionalLight.position.set(0, 10, 10);
-scene.add(directionalLight);
+scene.add(
+    scoreManager.getScoreText(),
+    lightManager.getLights(),
+    player.getMesh(),
+    ball.getMesh(),
+    ball.getArrow(),
+    wall.getWall(),
+    //debug.generateDebugGrid(),
+    //debug.getRadar(),
+);
 
-const Player = new Rectangle(2, 0.5, 10, bounds);
-const PlayBall = new Ball(Player, bounds, listener);
+let bricks = brickManager.getBricks();
+bricks.forEach(brick => {
+  scene.add(brick.getMesh());
+});
 
-scene.add(Player.getMesh());
-scene.add(PlayBall.getMesh());
-
-const ArrowHelper = new Arrow(PlayBall);
-scene.add(ArrowHelper.getArrow());
-
-// arrowHelper
-PlayBall.setArrowHelper(ArrowHelper);
+eventSystem.subscribe(EventType.BRICK_DESTROYED, (brick) => {
+  console.log(brick);
+  scene.remove(brick.getMesh());
+  bricks = bricks.filter(b => b !== brick);
+});
 
 function animate() {
-  //console.log(clock.getDelta());
   const deltaTime = clock.getDelta();
 
-  Player.update(deltaTime);
-  PlayBall.update(deltaTime);
-  //console.log(PlayBall.getVelocity())
-  ArrowHelper.update(deltaTime);
-  //console.log('Direction:', ArrowHelper.getArrowDirection());
+  player.update(deltaTime);
+  ball.update(deltaTime);
 
-  renderer.render(scene, camera);
+  debug.update(deltaTime);
+
+  bricks.forEach(brick => {
+    spatialHashing.insertIntoCell(brick);
+  });
+
+  spatialHashing.update();
+
+  renderer.render(scene, camera.getActiveCamera());
 }

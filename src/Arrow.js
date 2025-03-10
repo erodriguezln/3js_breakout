@@ -2,13 +2,14 @@ import * as THREE from 'three';
 
 export class Arrow {
   constructor(Actor) {
+    this._name = 'Arrow';
     this.dir = new THREE.Vector3(0, 1, 0).normalize();
     const origin = new THREE.Vector3(
         Actor.getPosition().x,
         Actor.getPosition().y,
         0,
     );
-    const length = 3;
+    const length = 4;
     const hex = 0xffff00;
 
     this.actor = Actor;
@@ -23,7 +24,8 @@ export class Arrow {
     this.minAngle = THREE.MathUtils.degToRad(15); // Minimum angle (0 degrees)
     this.maxAngle = THREE.MathUtils.degToRad(165); // Maximum angle (180
                                                    // degrees)
-    this.rotation = new THREE.Euler(0, 0, Math.PI / 2, 'XYZ');
+    //this.rotation = new THREE.Euler(0, 0, Math.PI / 2, 'XYZ');
+    this.rotation = new THREE.Euler(0, 0, 1, 'XYZ');
 
     this.bindKeyEvents();
 
@@ -38,7 +40,9 @@ export class Arrow {
   }
 
   reset() {
-    this.rotation = new THREE.Euler(0, 0, Math.PI / 2, 'XYZ');
+    //this.rotation = new THREE.Euler(0, 0, Math.PI / 2, 'XYZ');
+    this.rotation = new THREE.Euler(0, 0, 1, 'XYZ');
+
   }
 
   bindKeyEvents() {
